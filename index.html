@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Only Stereo - Konwerter MP3</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #080c12;
+            color: #d2dcf0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Canvas na cząsteczki (partikle w tle) */
+        #particles-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            background-color: rgba(15, 22, 35, 0.95);
+            border: 1px solid #1f2a40;
+            padding: 40px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            color: #ffffff;
+        }
+
+        h1 span {
+            color: #3498db;
+        }
+
+        p {
+            color: #8c9bb8;
+            font-size: 13px;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #a4b3d2;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            background-color: #141c2c;
+            border: 1px solid #23314d;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #3498db;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 5px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .result-box {
+            margin-top: 20px;
+            display: none;
+            text-align: left;
+        }
+
+        .result-box input {
+            background-color: #182238;
+            color: #3498db;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .loader {
+            display: none;
+            margin: 15px auto;
+            border: 3px solid #1f2a40;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Animowane cząsteczki (tło z gry) -->
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="container">
+        <h1>ONLY <span>STEREO</span></h1>
+        <p>Skonwertuj utwór z YouTube do bezpośredniego linku MP3 dla MTA.</p>
+        
+        <div class="input-group">
+            <label>Link do utworu (YouTube):</label>
+            <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+        
+        <button id="convertBtn" onclick="convertAudio()">Konwertuj utwór</button>
+        <div class="loader" id="loader"></div>
+
+        <div class="result-box" id="resultSection">
+            <label>Twój bezpośredni link MP3 (skopiuj do gry):</label>
+            <input type="text" id="outputLink" readonly onclick="this.select();">
+        </div>
+    </div>
+
+    <script>
+        // --- ANIMACJA PARTIKLI W TLE (Styl MTA) ---
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const particles = [];
+        for (let i = 0; i < 60; i++) {
+            particles.push({
+                x: (Math.random() - 0.5) * window.innerWidth,
+                y: (Math.random() - 0.5) * window.innerHeight,
+                size: Math.random() * 2.5 + 1,
+                speed: Math.random() * 0.8 + 0.3,
+                alpha: Math.random() * 0.5 + 0.2
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            particles.forEach(p => {
+                p.y -= p.speed;
+                if (p.y < -canvas.height/2) p.y = canvas.height/2;
+
+                ctx.beginPath();
+                ctx.arc(centerX + p.x, centerY + p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(52, 152, 219, ${p.alpha})`;
+                ctx.fill();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // --- LOGIKA KONWERSJI ---
+        async function convertAudio() {
+            const url = document.getElementById('urlInput').value;
+            const loader = document.getElementById('loader');
+            const resultSection = document.getElementById('resultSection');
+            const outputLink = document.getElementById('outputLink');
+            const btn = document.getElementById('convertBtn');
+
+            if (!url) {
+                alert("Wklej poprawny link do utworu!");
+                return;
+            }
+
+            loader.style.display = "block";
+            resultSection.style.display = "none";
+            btn.disabled = true;
+
+            try {
+                // Tutaj wywołujesz swój endpoint na hostingu (np. Vercel Serverless Function)
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+                if (data.direct_link) {
+                    outputLink.value = data.direct_link;
+                    resultSection.style.display = "block";
+                } else {
+                    alert("Wystąpił błąd podczas konwersji.");
+                }
+            } catch (err) {
+                alert("Błąd połączenia z serwerem konwertującym.");
+            } finally {
+                loader.style.display = "none";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
