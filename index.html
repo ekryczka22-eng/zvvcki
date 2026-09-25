@@ -23,7 +23,6 @@
             position: relative;
         }
 
-        /* Canvas na cząsteczki (partikle w tle) */
         #particles-canvas {
             position: absolute;
             top: 0;
@@ -149,7 +148,6 @@
 </head>
 <body>
 
-    <!-- Animowane cząsteczki (tło z gry) -->
     <canvas id="particles-canvas"></canvas>
 
     <div class="container">
@@ -171,7 +169,6 @@
     </div>
 
     <script>
-        // --- ANIMACJA PARTIKLI W TLE (Styl MTA) ---
         const canvas = document.getElementById('particles-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -211,7 +208,6 @@
         }
         animateParticles();
 
-        // --- LOGIKA KONWERSJI ---
         async function convertAudio() {
             const url = document.getElementById('urlInput').value;
             const loader = document.getElementById('loader');
@@ -229,22 +225,35 @@
             btn.disabled = true;
 
             try {
-                // Tutaj wywołujesz swój endpoint na hostingu (np. Vercel Serverless Function)
-                const response = await fetch('/api/convert', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url })
-                });
+                // Korzystamy z publicznego, darmowego API konwertującego w locie
+                const apiResponse = await fetch(`https://api.v0.nz/youtube/mp3?url=${encodeURIComponent(url)}`);
+                const data = await apiResponse.json();
 
-                const data = await response.json();
-                if (data.direct_link) {
-                    outputLink.value = data.direct_link;
+                if (data && data.download_url) {
+                    outputLink.value = data.download_url;
                     resultSection.style.display = "block";
                 } else {
-                    alert("Wystąpił błąd podczas konwersji.");
+                    // Alternatywne darmowe API w razie potrzeby
+                    throw new Error("Błąd konwersji");
                 }
             } catch (err) {
-                alert("Błąd połączenia z serwerem konwertującym.");
+                // Zapasowe darmowe zapytanie przez inne publiczne API
+                try {
+                    const altResponse = await fetch(`https://co.wuk.sh/api/json`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ url: url, isAudioOnly: true })
+                    });
+                    const altData = await altResponse.json();
+                    if (altData && altData.url) {
+                        outputLink.value = altData.url;
+                        resultSection.style.display = "block";
+                    } else {
+                        alert("Nie udało się skonwertować tego utworu. Spróbuj innego linku.");
+                    }
+                } catch (e) {
+                    alert("Wystąpił błąd podczas komunikacji z konwerterem.");
+                }
             } finally {
                 loader.style.display = "none";
                 btn.disabled = false;
