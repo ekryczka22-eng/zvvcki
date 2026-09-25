@@ -100,30 +100,36 @@
             loader.style.display = "block"; statusMsg.style.display = "block"; resultSection.style.display = "none"; btn.disabled = true;
             
             try {
-                // Stabilne zapytanie przez API Cobalt wyspecjalizowane w SoundCloud
-                const response = await fetch(`https://api.cobalt.tools/api/json`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        url: url,
-                        isAudioOnly: true,
-                        downloadMode: 'audio'
-                    })
-                });
-
+                // Użycie publicznego API do konwersji linków audio
+                const response = await fetch(`https://api.vkr.cc/v1/dl?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
 
-                if (data && data.url) {
-                    outputLink.value = data.url;
+                let audioUrl = data.url || data.audio || (data.data && data.data.url);
+
+                if (!audioUrl && data.links && data.links.length > 0) {
+                    audioUrl = data.links[0].url;
+                }
+
+                if (audioUrl) {
+                    outputLink.value = audioUrl;
                     resultSection.style.display = "block";
                 } else {
-                    throw new Error("Błąd pobierania");
+                    // Awaryjny fallback na zapasowe API dlp
+                    const fallbackResponse = await fetch(`https://co.wuk.sh/api/json`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ url: url, isAudioOnly: true })
+                    });
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData && fallbackData.url) {
+                        outputLink.value = fallbackData.url;
+                        resultSection.style.display = "block";
+                    } else {
+                        throw new Error("Brak linku");
+                    }
                 }
             } catch (err) {
-                alert("Nie udało się pobrać tego utworu. Sprawdź, czy link ze SoundCloud jest poprawny.");
+                alert("Nie udało się pobrać utworu. Upewnij się, że link pochodzi bezpośrednio z utworu SoundCloud (np. soundcloud.com/artysta/tytul).");
             } finally {
                 loader.style.display = "none"; statusMsg.style.display = "none"; btn.disabled = false;
             }
