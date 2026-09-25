@@ -100,36 +100,20 @@
             loader.style.display = "block"; statusMsg.style.display = "block"; resultSection.style.display = "none"; btn.disabled = true;
             
             try {
-                // Użycie w 100% stabilnego publicznego endpointu obsługującego zapytania przez klienta bez blokad CORS
-                const response = await fetch(`https://api.fabdl.com/soundcloud/get?url=${encodeURIComponent(url)}`, {
-                    method: 'GET',
-                });
-                
+                // Użycie alternatywnego publicznego dekodera strumieni audio
+                const response = await fetch(`https://api.fabdl.com/soundcloud/get?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
                 
-                if (data && data.result && data.result.download_url) {
-                    // FabDL zwraca bezpośredni link do pliku MP3
-                    const directStream = "https://api.fabdl.com" + data.result.download_url;
-                    outputLink.value = directStream;
+                if (data && data.success && data.result && data.result.download_url) {
+                    outputLink.value = "https://api.fabdl.com" + data.result.download_url;
                     resultSection.style.display = "block";
                 } else {
-                    // Fallback dla YouTube / innych platform przez uniwersalny enkoder strumieni
-                    const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-                    if (ytMatch && ytMatch[1]) {
-                        outputLink.value = `https://invidious.ioerr.uk/latest_version?id=${ytMatch[1]}&itag=140`;
-                        resultSection.style.display = "block";
-                    } else {
-                        throw new Error("Nie udało się przetworzyć tego linku.");
-                    }
+                    throw new Error("API zwróciło błędną odpowiedź.");
                 }
             } catch (err) {
-                // Ostateczny bezpieczny generator linku bezpośredniego dla SoundCloud
-                if (url.includes('soundcloud.com')) {
-                    outputLink.value = url; // SoundCloud linki często działają bezpośrednio w MTA pod F6
-                    resultSection.style.display = "block";
-                } else {
-                    alert("Wystąpił błąd podczas generowania. Sprawdź czy link jest poprawny.");
-                }
+                // Informacja o błędzie zamiast zwracania nieprawidłowego linku
+                alert("Nie udało się wygenerować bezpośredniego linku MP3. Spróbuj użyć linku z YouTube lub innego utworu ze SoundCloud.");
+                resultSection.style.display = "none";
             } finally {
                 loader.style.display = "none"; statusMsg.style.display = "none"; btn.disabled = false;
             }
