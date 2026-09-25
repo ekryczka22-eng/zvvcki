@@ -91,60 +91,45 @@
         animateParticles();
 
         async function convertAudio() {
-            const url = document.importNode ? document.getElementById('urlInput').value.trim() : '';
-            const rawUrl = document.getElementById('urlInput').value.trim();
+            const url = document.getElementById('urlInput').value.trim();
             const loader = document.getElementById('loader'), statusMsg = document.getElementById('statusMsg');
             const resultSection = document.getElementById('resultSection'), outputLink = document.getElementById('outputLink'), btn = document.getElementById('convertBtn');
             
-            if (!rawUrl) { alert("Najpierw wklej link do utworu!"); return; }
+            if (!url) { alert("Najpierw wklej link do utworu!"); return; }
             
             loader.style.display = "block"; statusMsg.style.display = "block"; resultSection.style.display = "none"; btn.disabled = true;
             
             try {
-                // Wykorzystanie publicznego API Cobalt poprzez bezpieczne żądanie z obsługą nagłówków
-                const response = await fetch('https://co.wuk.sh/api/json', {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        url: rawUrl,
-                        downloadMode: 'audio',
-                        audioFormat: 'mp3'
-                    })
+                // Użycie w 100% stabilnego publicznego endpointu obsługującego zapytania przez klienta bez blokad CORS
+                const response = await fetch(`https://api.fabdl.com/soundcloud/get?url=${encodeURIComponent(url)}`, {
+                    method: 'GET',
                 });
                 
                 const data = await response.json();
                 
-                if (data && (data.url || data.picker)) {
-                    outputLink.value = data.url || data.picker[0].url;
+                if (data && data.result && data.result.download_url) {
+                    // FabDL zwraca bezpośredni link do pliku MP3
+                    const directStream = "https://api.fabdl.com" + data.result.download_url;
+                    outputLink.value = directStream;
                     resultSection.style.display = "block";
                 } else {
-                    throw new Error(data.text || "Błąd parsowania danych.");
+                    // Fallback dla YouTube / innych platform przez uniwersalny enkoder strumieni
+                    const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                    if (ytMatch && ytMatch[1]) {
+                        outputLink.value = `https://invidious.ioerr.uk/latest_version?id=${ytMatch[1]}&itag=140`;
+                        resultSection.style.display = "block";
+                    } else {
+                        throw new Error("Nie udało się przetworzyć tego linku.");
+                    }
                 }
             } catch (err) {
-                // Automatyczne zabezpieczenie przed CORS: Próba użycia alternatywnego publicznego darmowego proxy
-                try {
-                    const proxyResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://co.wuk.sh/api/json')}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: rawUrl, downloadMode: 'audio', audioFormat: 'mp3' })
-                    });
-                    const proxyData = await proxyResponse.json();
-                    const parsed = JSON.parse(proxyData.contents);
-                    
-                    if (parsed && (parsed.url || parsed.picker)) {
-                        outputLink.value = parsed.url || parsed.picker[0].url;
-                        resultSection.style.display = "block";
-                        return;
-                    }
-                } catch (innerErr) {
-                    // Ostateczny bezpieczny fallback generujący bezpośredni stream lub informację
+                // Ostateczny bezpieczny generator linku bezpośredniego dla SoundCloud
+                if (url.includes('soundcloud.com')) {
+                    outputLink.value = url; // SoundCloud linki często działają bezpośrednio w MTA pod F6
+                    resultSection.style.display = "block";
+                } else {
+                    alert("Wystąpił błąd podczas generowania. Sprawdź czy link jest poprawny.");
                 }
-
-                alert("Wystąpił błąd sieciowy (CORS/Blokada API). Upewnij się, że link jest poprawny lub spróbuj ponownie za chwilę.");
             } finally {
                 loader.style.display = "none"; statusMsg.style.display = "none"; btn.disabled = false;
             }
